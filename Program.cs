@@ -1,10 +1,24 @@
 using go_han_fe.Components;
+using go_han_fe.Services.Api;
+using go_han_fe.Services.State;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.Configure<ApiSettings>(
+    builder.Configuration.GetSection("ApiSettings")
+);
+
+builder.Services.AddSingleton(resolver =>
+    resolver.GetRequiredService<IOptions<ApiSettings>>().Value
+);
+
+builder.Services.AddScoped<AuthState>();
+builder.Services.AddHttpClient<AuthApiService>();
 
 var app = builder.Build();
 

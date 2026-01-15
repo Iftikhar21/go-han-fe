@@ -1,67 +1,106 @@
-@page "/login"
-@using go_han_fe.Models.DTOs
+@page "/"
+@using go_han_fe.Models.ViewModels
+@using go_han_fe.Services.Api
+@using go_han_fe.Services.State
 @rendermode InteractiveServer
 @layout Layout.EmptyLayout
+
+@inject AuthApiService AuthApi
+@inject AuthState AuthState
 @inject NavigationManager NavManager
 
 <div class="min-h-screen flex flex-col items-center justify-center bg-sentra-slate px-4 py-12">
-    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-10 border border-slate-100 transform transition-all">
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-10 border border-slate-100">
 
         <div class="text-center mb-10">
-            <div
-                class="bg-sentra-blue w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg shadow-blue-200">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A10.003 10.003 0 0012 20c4.478 0 8.268-2.943 9.542-7m-1.212-3.046A10.088 10.088 0 0122 12c0 1.261-.231 2.467-.652 3.585m-1.42-6.233A10.014 10.014 0 0111 21.314m6.269-6.233A9.965 9.965 0 0112 15c-1.31 0-2.545-.25-3.67-.704m5.94-2.287A10.046 10.046 0 0112 12c-1.248 0-2.434-.23-3.52-.647M13 10V4a1 1 0 00-1-1h-2a1 1 0 00-1 1v3.833" />
-                </svg>
-            </div>
-            <h3 class="text-2xl font-extrabold text-sentra-navy tracking-tight">SentraKerja</h3>
-            <p class="text-slate-500 mt-2 font-medium">Selamat datang kembali!</p>
+            <h3 class="text-2xl font-extrabold text-sentra-navy">SentraKerja</h3>
+            <p class="text-slate-500 mt-2">Selamat datang kembali!</p>
         </div>
 
         <EditForm Model="loginModel" OnValidSubmit="HandleLogin" class="space-y-6">
             <DataAnnotationsValidator />
 
-            <div>
-                <label class="block text-sm font-semibold text-slate-700 mb-2">Alamat Email</label>
-                <div class="relative">
-                    <InputText @bind-Value="loginModel.Email"
-                        class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sentra-blue focus:bg-white transition-all duration-200"
-                        placeholder="nama@perusahaan.com" />
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="bg-red-100 text-red-700 px-4 py-3 rounded-xl text-sm font-medium">
+                    @errorMessage
                 </div>
+            }
+
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Email</label>
+                <InputText @bind-Value="loginModel.Email" class="block w-full px-4 py-3 bg-slate-50 border rounded-xl"
+                    placeholder="email@gmail.com" />
             </div>
 
             <div>
                 <label class="block text-sm font-semibold text-slate-700 mb-2">Password</label>
                 <InputText @bind-Value="loginModel.Password" type="password"
-                    class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sentra-blue focus:bg-white transition-all duration-200"
-                    placeholder="••••••••" />
+                    class="block w-full px-4 py-3 bg-slate-50 border rounded-xl" placeholder="••••••••" />
             </div>
 
-            <button type="submit"
-                class="w-full bg-sentra-blue hover:bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-200 transition duration-300 ease-in-out transform hover:-translate-y-0.5 active:scale-95">
-                Masuk ke Dashboard
+            <button type="submit" disabled="@isLoading"
+                class="w-full bg-sentra-blue text-white font-bold py-3.5 rounded-xl disabled:opacity-60">
+                @(isLoading ? "Memproses..." : "Login")
             </button>
         </EditForm>
 
-        <div class="mt-8 pt-6 border-t border-slate-100 text-center">
-            <p class="text-sm text-slate-600">
-                Belum punya akun?
-                <a href="/register"
-                    class="text-sentra-blue hover:text-blue-700 font-bold no-underline transition-colors">Daftar
-                    sekarang</a>
-            </p>
+        <div class="mt-6 text-center text-sm">
+            Belum punya akun?
+            <a href="/register" class="text-sentra-blue font-bold">Daftar</a>
         </div>
     </div>
 </div>
 
 @code {
-    private LoginRequest loginModel = new LoginRequest();
+    private LoginViewModel loginModel = new();
+    private string? errorMessage;
+    private bool isLoading;
 
     private async Task HandleLogin()
     {
-        Console.WriteLine($"Logging in with {loginModel.Email}");
-        NavManager.NavigateTo("/dashboard");
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var response = await AuthApi.LoginAsync(
+            loginModel.Email,
+            loginModel.Password
+            );
+
+            if (response == null)
+            {
+                errorMessage = "Server tidak merespon";
+                return;
+            }
+
+            if (!response.Success)
+            {
+                // 🔥 MESSAGE ASLI DARI BACKEND
+                errorMessage = response.Message;
+                return;
+            }
+
+            var token = response.Data!.Token;
+
+            var user = await AuthApi.MeAsync(token);
+            if (user == null)
+            {
+                errorMessage = "Gagal mengambil data user";
+                return;
+            }
+
+            AuthState.SetAuth(token, user);
+            NavManager.NavigateTo("/dashboard", true);
+        }
+        catch
+        {
+            errorMessage = "Terjadi kesalahan pada server";
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 }

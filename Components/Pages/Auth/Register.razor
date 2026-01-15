@@ -1,0 +1,106 @@
+@page "/register"
+@using go_han_fe.Models.ViewModels
+@using go_han_fe.Services.Api
+@using go_han_fe.Services.State
+@rendermode InteractiveServer
+@layout Layout.EmptyLayout
+
+@inject AuthApiService AuthApi
+@inject AuthState AuthState
+@inject NavigationManager NavManager
+
+<div class="min-h-screen flex flex-col items-center justify-center bg-sentra-slate px-4 py-12">
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-10 border border-slate-100">
+
+        <div class="text-center mb-10">
+            <h3 class="text-2xl font-extrabold text-sentra-navy">SentraKerja</h3>
+            <p class="text-slate-500 mt-2">Selamat datang kembali!</p>
+        </div>
+
+        <EditForm Model="registerModel" OnSubmit="HandleRegister" class="space-y-6">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="bg-red-100 text-red-700 px-4 py-3 rounded-xl text-sm font-medium">
+                    @errorMessage
+                </div>
+            }
+
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Username</label>
+                <InputText @bind-Value="registerModel.Username"
+                    class="block w-full px-4 py-3 bg-slate-50 border rounded-xl" placeholder="your username" />
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Email</label>
+                <InputText @bind-Value="registerModel.Email"
+                    class="block w-full px-4 py-3 bg-slate-50 border rounded-xl" placeholder="email@example.com" />
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Password</label>
+                <InputText @bind-Value="registerModel.Password" type="password"
+                    class="block w-full px-4 py-3 bg-slate-50 border rounded-xl" placeholder="••••••••" />
+            </div>
+
+            <button type="submit" disabled="@isLoading"
+                class="w-full bg-sentra-blue text-white font-bold py-3.5 rounded-xl disabled:opacity-60">
+                @(isLoading ? "Memproses..." : "Register")
+            </button>
+        </EditForm>
+
+        <div class="mt-6 text-center text-sm">
+            Sudah punya akun?
+            <a href="/" class="text-sentra-blue font-bold">Daftar</a>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RegisterViewModel registerModel = new();
+    private string? errorMessage;
+    private bool isLoading;
+
+    private async Task HandleRegister()
+    {
+        Console.WriteLine("HANDLE REGISTER KE PANGGIL");
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var response = await AuthApi.RegisterAsync(
+            registerModel.Username,
+            registerModel.Email,
+            registerModel.Password
+            );
+
+            if (response == null)
+            {
+                errorMessage = "Server tidak merespon";
+                return;
+            }
+
+            if (!response.Success)
+            {
+                // 🔥 MESSAGE DARI BACKEND
+                errorMessage = response.Message;
+                return;
+            }
+
+            NavManager.NavigateTo("/", true);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
