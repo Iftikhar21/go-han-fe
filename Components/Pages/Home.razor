@@ -1,7 +1,27 @@
 ﻿@page "/dashboard"
+@inherits ProtectedComponentBase
 
-<PageTitle>Home</PageTitle>
+<h1>Dashboard</h1>
 
-<h1>Hello, world!</h1>
+@if (AuthState.IsAdmin())
+{
+    <div class="admin-dashboard">
+        <h2>Admin Dashboard</h2>
+    </div>
+}
+else if (AuthState.IsEmployee())
+{
+    <div class="employee-dashboard">
+        <h2>Employee Dashboard</h2>
+    </div>
+}
 
-Welcome to your new app.
+@code {
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        // Bisa tambahkan logika role-specific di sini
+        Console.WriteLine($"User role: {AuthState.RoleName()}");
+    }
+}

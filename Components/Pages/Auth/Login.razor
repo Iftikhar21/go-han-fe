@@ -71,12 +71,12 @@
                                 <i class="bi bi-lock w-5 h-5"></i>
                             </span>
 
-                            <InputText @bind-Value="loginModel.Password" type="@PasswordInputType" class="block w-full pl-12 pr-12 py-3.5 border border-gray-200 rounded-lg
-                   focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                   outline-none transition bg-gray-50" placeholder="Enter your password" />
+                            <InputText @bind-Value="loginModel.Password" type="@PasswordInputType"
+                                class="block w-full pl-12 pr-12 py-3.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-gray-50"
+                                placeholder="Enter your password" />
 
-                            <button type="button" @onclick="TogglePasswordVisibility" class="absolute right-4 top-1/2 -translate-y-1/2
-                   text-gray-400 hover:text-gray-600">
+                            <button type="button" @onclick="TogglePasswordVisibility"
+                                class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                                 <i class="bi @(showPassword ? "bi-eye-slash" : "bi-eye") w-5 h-5"></i>
                             </button>
                         </div>
@@ -112,10 +112,9 @@
     private LoginViewModel loginModel = new();
     private string? errorMessage;
     private bool isLoading;
-
     private bool showPassword = false;
+
     private string PasswordInputType => showPassword ? "text" : "password";
-    private string PasswordIcon => showPassword ? "eye-slash" : "eye";
 
     private void TogglePasswordVisibility()
     {
@@ -129,42 +128,87 @@
 
         try
         {
+            Console.WriteLine("=== LOGIN ATTEMPT ===");
+            Console.WriteLine($"Email: {loginModel.Email}");
+
             var response = await AuthApi.LoginAsync(
             loginModel.Email,
             loginModel.Password
             );
 
-            if (response == null)
+            if (response?.Success == true && response.Data != null)
             {
-                errorMessage = "Server tidak merespon";
-                return;
-            }
+                Console.WriteLine("Login API Response: SUCCESS");
 
-            if (!response.Success)
+                var token = response.Data.Token;
+                var user = await AuthApi.MeAsync(token);
+
+                if (user != null)
+                {
+                    Console.WriteLine("User data retrieved successfully");
+
+                    // Set authentication state
+                    AuthState.SetAuth(token, user);
+
+                    // Force UI update
+                    StateHasChanged();
+
+                    // Small delay to ensure state propagation
+                    await Task.Delay(200);
+
+                    // Debug verification
+                    Console.WriteLine($"=== POST-LOGIN VERIFICATION ===");
+                    Console.WriteLine($"AuthState.User?.Role?.Id: {AuthState.User?.Role?.Id}");
+                    Console.WriteLine($"AuthState.IsAdmin(): {AuthState.IsAdmin()}");
+                    Console.WriteLine($"AuthState.IsEmployee(): {AuthState.IsEmployee()}");
+
+                    // Determine redirect URL based on role
+                    string redirectUrl;
+                    if (AuthState.IsAdmin())
+                    {
+                        redirectUrl = "/dashboard";
+                        Console.WriteLine("Redirecting to Admin Dashboard");
+                    }
+                    else if (AuthState.IsEmployee())
+                    {
+                        redirectUrl = "/dashboard";
+                        Console.WriteLine("Redirecting to Employee Dashboard");
+                    }
+                    else
+                    {
+                        redirectUrl = "/dashboard";
+                        Console.WriteLine("⚠️ Unknown role, redirecting to default dashboard");
+                    }
+
+                    // Force full page reload to ensure state consistency
+                    NavManager.NavigateTo(redirectUrl);
+                }
+                else
+                {
+                    errorMessage = "Failed to retrieve user information";
+                    Console.WriteLine("ERROR: User data is NULL after /auth/me");
+                }
+            }
+            else
             {
-                errorMessage = response.Message;
-                return;
+                errorMessage = response?.Message ?? "Login failed. Please check your credentials.";
+                Console.WriteLine($"Login failed: {errorMessage}");
             }
-
-            var token = response.Data!.Token;
-
-            var user = await AuthApi.MeAsync(token);
-            if (user == null)
-            {
-                errorMessage = "Gagal mengambil data user";
-                return;
-            }
-
-            AuthState.SetAuth(token, user);
-            NavManager.NavigateTo("/dashboard", true);
         }
-        catch
+        catch (HttpRequestException ex)
         {
-            errorMessage = "Terjadi kesalahan pada server";
+            errorMessage = "Cannot connect to server. Please try again later.";
+            Console.WriteLine($"HTTP Error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+            Console.WriteLine($"Exception: {ex}");
         }
         finally
         {
             isLoading = false;
+            StateHasChanged();
         }
     }
 }

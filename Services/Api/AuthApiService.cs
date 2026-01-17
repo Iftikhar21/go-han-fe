@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading.Tasks;
 using go_han_fe.Models.DTOs;
@@ -31,12 +32,10 @@ namespace go_han_fe.Services.Api
 
             return result;
         }
-
-
         public async Task<UserDTO?> MeAsync(string token)
         {
             _http.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue(
+                new AuthenticationHeaderValue(
                     "Bearer", token
                 );
 
@@ -46,6 +45,12 @@ namespace go_han_fe.Services.Api
 
             if (!response.IsSuccessStatusCode)
                 return null;
+
+            // Debug: Tampilkan response JSON
+            var jsonString = await response.Content.ReadAsStringAsync();
+            Console.WriteLine("=== /auth/me RESPONSE ===");
+            Console.WriteLine(jsonString);
+            Console.WriteLine("========================");
 
             var result = await response.Content
                 .ReadFromJsonAsync<ApiResponse<UserDTO>>();

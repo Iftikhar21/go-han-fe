@@ -19,6 +19,9 @@ builder.Services.AddSingleton(resolver =>
 
 builder.Services.AddScoped<AuthState>();
 builder.Services.AddHttpClient<AuthApiService>();
+builder.Services.AddScoped<StringState>();
+builder.Services.AddAuthorizationCore();
+builder.Services.AddAuthentication();
 
 var app = builder.Build();
 

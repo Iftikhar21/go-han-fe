@@ -1,22 +1,33 @@
-﻿@inherits LayoutComponentBase
+﻿@inherits ProtectedComponentBase
+@using Microsoft.AspNetCore.Authorization
+@using go_han_fe.Services.State
+
+@attribute [Authorize]
 
 <div class="min-h-screen bg-gray-100 flex flex-col">
-    <!-- Sidebar -->
-    <AdminSidebar _sidebarOpen="_sidebarOpen" _sidebarOpenChanged="OnSidebarOpenChanged" />
+    <!-- Sidebar hanya untuk role tertentu -->
+    @if (AuthState.IsAdmin() || AuthState.IsEmployee())
+    {
+        <AdminSidebar _sidebarOpen="_sidebarOpen" _sidebarOpenChanged="OnSidebarOpenChanged" />
+    }
 
     <!-- Overlay untuk mobile -->
-    @if (_sidebarOpen)
+    @if (_sidebarOpen && (AuthState.IsAdmin() || AuthState.IsEmployee()))
     {
         <div class="fixed inset-0 bg-black/50 z-30 lg:hidden" @onclick="ToggleSidebar"></div>
     }
 
     <!-- Main Content Area -->
-    <div class="lg:ml-80 flex-1 flex flex-col">
-        <AdminHeader Title="@Title" OnMenuToggle="ToggleSidebar" />
+    <div class="@GetMainContentClass() flex-1 flex flex-col">
+        <!-- Header hanya untuk role tertentu -->
+        @if (AuthState.IsAdmin() || AuthState.IsEmployee())
+        {
+            <AdminHeader Title="@Title" OnMenuToggle="ToggleSidebar" />
+        }
 
         <main class="flex-1 p-4 lg:p-6 bg-gray-100">
-            <div class="max-w-full pt-16">
-                @Body
+            <div class="max-w-full @GetTopPadding()">
+                @Body 
             </div>
         </main>
 
@@ -28,7 +39,35 @@
     [Parameter]
     public string Title { get; set; } = "Dashboard";
 
+    [Parameter]
+    public bool RequireAdmin { get; set; } = false;
+
     private bool _sidebarOpen = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        // Redirect jika butuh admin tapi bukan admin
+        if (RequireAdmin && !AuthState.IsAdmin())
+        {
+            Navigation.NavigateTo("/dashboard");
+        }
+    }
+
+    private string GetMainContentClass()
+    {
+        if (AuthState.IsAdmin() || AuthState.IsEmployee())
+            return _sidebarOpen ? "lg:ml-80" : "";
+        return "";
+    }
+
+    private string GetTopPadding()
+    {
+        if (AuthState.IsAdmin() || AuthState.IsEmployee())
+            return "pt-16";
+        return "";
+    }
 
     private void ToggleSidebar()
     {

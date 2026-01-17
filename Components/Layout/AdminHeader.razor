@@ -1,3 +1,8 @@
+@using go_han_fe.Services.State
+@inject AuthState AuthState
+@inject StringState StringState
+@rendermode InteractiveServer
+
 <header
     class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 lg:px-6 fixed top-0 right-0 left-0 lg:left-80 z-20 shadow-sm">
     <div class="flex items-center gap-4">
@@ -16,11 +21,11 @@
     <div class="flex items-center gap-4">
         <div class="text-right hidden sm:block">
             <p class="text-xs text-gray-400">Selamat datang,</p>
-            <p class="text-sm font-bold text-gray-800">Admin Sentra</p>
+            <p class="text-sm font-bold text-gray-800">@StringState.Capitalize(AuthState.UserName) (@StringState.Capitalize(AuthState.RoleName()))</p>
         </div>
         <div
             class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold border-2 border-white shadow-sm">
-            A
+            @AuthState.UserName?.Substring(0, 1).ToUpper()
         </div>
     </div>
 </header>
